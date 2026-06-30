@@ -13,9 +13,6 @@
     <link rel="manifest" href="manifest.json">
 
     <style>
-        /* ==========================================================================
-           1. ESTILOS CSS ANTI-NAVEGADOR (OPTIMIZACIÓN PARA PANTALLA COMPLETA)
-           ========================================================================== */
         html, body {
             position: fixed;
             overflow: hidden;
@@ -26,18 +23,16 @@
             background-color: #0c0c0e;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: #ffffff;
-            overscroll-behavior: none; /* Elimina el efecto elástico de rebote de Safari */
+            overscroll-behavior: none;
         }
 
-        /* Bloqueo global de gestos e interacciones clásicas de páginas web */
         * {
-            -webkit-user-select: none; /* Impide que el usuario seleccione texto por error */
+            -webkit-user-select: none;
             user-select: none;
-            -webkit-tap-highlight-color: transparent; /* Quita el recuadro azul molesto al pulsar botones */
+            -webkit-tap-highlight-color: transparent;
             box-sizing: border-box;
         }
 
-        /* Contenedor maestro de la App */
         .app-container {
             width: 100%;
             height: 100%;
@@ -46,7 +41,6 @@
             justify-content: space-between;
         }
 
-        /* Cabecera optimizada para el Notch o la Dynamic Island */
         .header {
             background-color: #16161a;
             padding-top: env(safe-area-inset-top, 20px);
@@ -63,7 +57,6 @@
             color: #e5e5ea;
         }
 
-        /* Área de visualización del Video */
         .preview-area {
             flex: 1;
             display: flex;
@@ -82,10 +75,36 @@
         }
 
         #source-video {
-            display: none; /* Ocultamos el elemento nativo; procesamos sus fotogramas por código */
+            display: none;
         }
 
-        /* Barra de Herramientas de Edición y Filtros */
+        /* Contenedor de herramientas superior (NUEVO: Para importar archivos) */
+        .import-bar {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+            background-color: #16161a;
+            border-bottom: 1px solid #232329;
+        }
+
+        /* Ocultamos el input de archivo nativo que es feo */
+        #file-input {
+            display: none;
+        }
+
+        /* Creamos un botón personalizado bonito para iOS */
+        .btn-import {
+            background-color: #34c759; /* Verde nativo de iOS */
+            color: #ffffff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+        }
+
         .toolbar {
             display: flex;
             justify-content: space-around;
@@ -99,7 +118,7 @@
             background-color: #2c2c35;
             color: #ffffff;
             border: none;
-            padding: 10px 18px;
+            padding: 10px 14px;
             border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
@@ -107,22 +126,20 @@
             transition: background 0.15s, transform 0.1s;
         }
 
-        /* Feedback visual nativo al mantener presionado en el iPhone */
-        .btn:active {
-            background-color: #3a3a44;
+        .btn:active, .btn-import:active {
             transform: scale(0.96);
+            opacity: 0.9;
         }
 
         #btn-play {
-            background-color: #007aff; /* Azul característico de iOS */
-            min-width: 90px;
+            background-color: #007aff;
+            min-width: 85px;
         }
         
         #btn-play.playing {
-            background-color: #ff3b30; /* Rojo si está en reproducción */
+            background-color: #ff3b30;
         }
 
-        /* Línea de Tiempo Inferior compatible con la barra de inicio de iOS */
         .timeline-container {
             background-color: #16161a;
             padding: 12px 16px;
@@ -156,7 +173,6 @@
             border-radius: 50%;
             background: #007aff;
             cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
     </style>
 </head>
@@ -167,8 +183,13 @@
             <h2>EDITOR DE VIDEO PRO</h2>
         </header>
 
+        <div class="import-bar">
+            <label for="file-input" class="btn-import">📁 Seleccionar Video</label>
+            <input type="file" id="file-input" accept="video/*">
+        </div>
+
         <div class="preview-area">
-            <video id="source-video" playsinline webkit-playsinline loop muted src="https://assets.mixkit.co/videos/preview/mixkit-neon-light-from-a-tunnel-seamless-loop-41614-large.mp4"></video>
+            <video id="source-video" playsinline webkit-playsinline loop muted></video>
             <canvas id="video-canvas"></canvas>
         </div>
 
@@ -187,13 +208,11 @@
     </div>
 
     <script>
-        /* ==========================================================================
-           2. MOTOR LÓGICO EN JAVASCRIPT (RENDERIZADO Y PROCESAMIENTO DE FOTOGRAMAS)
-           ========================================================================== */
         const video = document.getElementById('source-video');
         const canvas = document.getElementById('video-canvas');
         const ctx = canvas.getContext('2d');
 
+        const fileInput = document.getElementById('file-input');
         const btnPlay = document.getElementById('btn-play');
         const slider = document.getElementById('timeline-slider');
         const currentTimeLabel = document.getElementById('current-time');
@@ -202,17 +221,41 @@
 
         let currentFilter = 'normal';
 
+        // NUEVO: Escuchar cuando el usuario seleccione un video
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Pausar reproducción actual si la hay
+                video.pause();
+                btnPlay.textContent = "▶ Play";
+                btnPlay.classList.remove('playing');
+
+                // Crear una URL local y segura para el archivo multimedia seleccionado
+                const fileURL = URL.createObjectURL(file);
+                video.src = fileURL;
+                video.load(); // Forzar la carga del nuevo video
+            }
+        });
+
         // Sincroniza las dimensiones cuando el video está listo en memoria
         video.addEventListener('loadedmetadata', () => {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             totalTimeLabel.textContent = formatTime(video.duration);
             slider.max = Math.floor(video.duration);
-            drawFrame(); // Dibuja la primera imagen inicial
+            slider.value = 0;
+            currentTimeLabel.textContent = "00:00";
+            drawFrame(); 
         });
 
         // Alternar reproducción
         btnPlay.addEventListener('click', () => {
+            // Evitar reproducir si no hay un video cargado aún
+            if (!video.src) {
+                alert("Por favor, selecciona un video primero.");
+                return;
+            }
+
             if (video.paused) {
                 video.play();
                 btnPlay.textContent = "⏸ Pause";
@@ -225,25 +268,23 @@
             }
         });
 
-        // Bucle de renderizado continuo sincronizado a los Hz de la pantalla del iPhone
         function renderLoop() {
             if (video.paused || video.ended) return;
-            
             drawFrame();
             updateTimeline();
-            
             requestAnimationFrame(renderLoop);
         }
 
-        // Extractor de fotogramas y manipulador de píxeles
         function drawFrame() {
+            // Solo dibuja si el video tiene dimensiones válidas
+            if (video.videoWidth === 0) return;
+            
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
             if (currentFilter !== 'normal') {
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imageData.data;
                 
-                // Recorrido de la matriz RGBA píxel por píxel
                 for (let i = 0; i < data.length; i += 4) {
                     let r = data[i];
                     let g = data[i+1];
@@ -251,9 +292,9 @@
                     
                     if (currentFilter === 'bw') {
                         let grey = (r + g + b) / 3;
-                        data[i] = grey;     // Rojo
-                        data[i+1] = grey;   // Verde
-                        data[i+2] = grey;   // Azul
+                        data[i] = grey;     
+                        data[i+1] = grey;   
+                        data[i+2] = grey;   
                     } else if (currentFilter === 'invert') {
                         data[i] = 255 - r;
                         data[i+1] = 255 - g;
@@ -264,378 +305,39 @@
             }
         }
 
-        // Cambiar entre los filtros de la barra
         filterButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 currentFilter = e.target.getAttribute('data-filter');
-                if (video.paused) drawFrame(); // Fuerza actualización visual si el video está en pausa
+                if (video.paused) drawFrame(); 
             });
         });
 
-        // Sincronizar el control deslizante con la reproducción activa
         function updateTimeline() {
             slider.value = Math.floor(video.currentTime);
             currentTimeLabel.textContent = formatTime(video.currentTime);
         }
 
-        // Permite mover manualmente la línea de tiempo (Scrubbing)
         slider.addEventListener('input', () => {
+            if (!video.src) return;
             video.currentTime = slider.value;
             currentTimeLabel.textContent = formatTime(video.currentTime);
             if (video.paused) drawFrame();
         });
 
-        // Convierte segundos planos a formato mm:ss
         function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
             let min = Math.floor(seconds / 60);
             let sec = Math.floor(seconds % 60);
             return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         }
 
-        /* ==========================================================================
-           3. REGISTRO DEL SERVICE WORKER (PARA CARGA INSTANTÁNEA / OFFLINE)
-           ========================================================================== */
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('PWA: Service Worker listo.'))
-                    .catch(err => console.log('PWA: Error al registrar.', err));
+                    .then(reg => console.log('PWA: Ready.'))
+                    .catch(err => console.log('PWA: Error.', err));
             });
         }
-    </script>
-</body>
-</html>
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            margin: 0 0 8px 0;
-        }
-
-        .subtitle {
-            font-size: 14px;
-            color: var(--accent-color);
-            margin: 0;
-        }
-
-        /* Cuadrícula de Productos */
-        .catalog-container {
-            max-width: 1000px;
-            margin: 40px auto;
-            padding: 0 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-
-        .product-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s ease, border-color 0.2s ease;
-        }
-
-        .product-card:hover {
-            transform: translateY(-4px);
-            border-color: #48484A;
-        }
-
-        .product-image-placeholder {
-            width: 100%;
-            height: 280px;
-            background-color: #1C1C1E;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--accent-color);
-            font-size: 14px;
-        }
-
-        .product-info {
-            padding: 20px;
-        }
-
-        .product-sku {
-            font-size: 11px;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 4px;
-        }
-
-        .product-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin: 0 0 8px 0;
-        }
-
-        .product-price {
-            font-size: 16px;
-            font-weight: 500;
-            color: #ffffff;
-        }
-
-        /* Ventana Emergente (Modal de Producto) */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .modal-content {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            width: 90%;
-            max-width: 500px;
-            border-radius: 24px;
-            padding: 32px;
-            position: relative;
-            transform: translateY(20px);
-            transition: transform 0.3s ease;
-        }
-
-        .modal-overlay.active .modal-content {
-            transform: translateY(0);
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: var(--accent-color);
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        .modal-title {
-            font-size: 22px;
-            font-weight: 600;
-            margin: 0 0 8px 0;
-        }
-
-        .modal-price {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
-        .modal-description {
-            font-size: 14px;
-            color: var(--accent-color);
-            line-height: 1.5;
-            margin-bottom: 24px;
-        }
-
-        /* Botones de Acción */
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .btn {
-            padding: 14px;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 15px;
-            text-align: center;
-            display: block;
-            cursor: pointer;
-            border: none;
-            transition: opacity 0.2s ease;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        .btn-whatsapp {
-            background-color: var(--whatsapp-color);
-            color: white;
-        }
-
-        .btn-instagram {
-            background-color: #2C2C2E;
-            color: white;
-            border: 1px solid var(--border-color);
-        }
-
-        /* Alerta flotante de copiado */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #1C1C1E;
-            border: 1px solid #3A3A3C;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-size: 14px;
-            z-index: 2000;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-
-    <header>
-        <div class="logo">TecnoTrade</div>
-        <p class="subtitle">Catálogo Exclusivo de Covers Premium</p>
-    </header>
-
-    <div class="catalog-container" id="catalog">
-        </div>
-
-    <div class="modal-overlay" id="product-modal" onclick="closeModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <button class="close-btn" onclick="clearHash()">&times;</button>
-            <div id="modal-sku" class="product-sku">SKU</div>
-            <h2 id="modal-title" class="modal-title">Nombre del Producto</h2>
-            <div id="modal-price" class="modal-price">$0.00</div>
-            <p id="modal-description" class="modal-description">Descripción detallada.</p>
-            
-            <div class="action-buttons">
-                <a href="#" id="btn-wa" target="_blank" class="btn btn-whatsapp">Pedir por WhatsApp</a>
-                <button id="btn-ig" class="btn btn-instagram">Copiar SKU e ir a Instagram</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="toast" id="toast-alert">Código de producto copiado al portapapeles</div>
-
-    <script>
-        // CONFIGURACIÓN DE TU NEGOCIO (Modifica esto)
-        const CONFIG = {
-            whatsappPhone: "50760000000", // Reemplaza con tu número (con código de país, sin el +)
-            instagramUser: "tu_usuario_ig" // Tu nombre de usuario en Instagram
-        };
-
-        // BASE DE DATOS DE TUS 3 PRODUCTOS DE EJEMPLO
-        const products = [
-            {
-                id: "f5666",
-                title: "Silicone Case MagSafe",
-                price: "$19.99",
-                sku: "#COV-F5666",
-                description: "Cover de silicona premium con tacto suave, interior de microfibra para evitar rayones y anillo MagSafe magnético integrado perfectamente compatible con carga inalámbrica."
-            },
-            {
-                id: "a3421",
-                title: "Leather Luxury Edition",
-                price: "$24.99",
-                sku: "#COV-A3421",
-                description: "Diseño elegante en cuero sintético de alta resistencia. Bordes elevados para proteger la cámara y botones de aluminio anodizado que ofrecen una pulsación premium."
-            },
-            {
-                id: "x9812",
-                title: "Crystal Clear Armor",
-                price: "$14.99",
-                sku: "#COV-X9812",
-                description: "Transparencia absoluta con tecnología anti-amarilleo. Esquinas reforzadas con colchón de aire para soportar impactos severos sin perder la estética original de tu equipo."
-            }
-        ];
-
-        // 1. Renderizar los productos en la cuadrícula
-        const catalogContainer = document.getElementById('catalog');
-        products.forEach(product => {
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.setAttribute('onclick', `location.hash = 'producto-${product.id}'`);
-            card.innerHTML = `
-                <div class="product-image-placeholder">📱 Imagen de Muestra</div>
-                <div class="product-info">
-                    <div class="product-sku">${product.sku}</div>
-                    <h3 class="product-title">${product.title}</h3>
-                    <div class="product-price">${product.price}</div>
-                </div>
-            `;
-            catalogContainer.appendChild(card);
-        });
-
-        // 2. Manejar la apertura del Modal según la URL (#producto-id)
-        const modal = document.getElementById('product-modal');
-        
-        function checkHash() {
-            const hash = window.location.hash;
-            if (hash.startsWith('#producto-')) {
-                const productId = hash.replace('#producto-', '');
-                const product = products.find(p => p.id === productId);
-                
-                if (product) {
-                    openModal(product);
-                }
-            } else {
-                modal.classList.remove('active');
-            }
-        }
-
-        function openModal(product) {
-            document.getElementById('modal-sku').innerText = product.sku;
-            document.getElementById('modal-title').innerText = product.title;
-            document.getElementById('modal-price').innerText = product.price;
-            document.getElementById('modal-description').innerText = product.description;
-
-            // Configurar el enlace dinámico de WhatsApp
-            const message = `Hola TecnoTrade, estoy interesado en el producto ${product.title} (${product.sku})`;
-            const encodedMessage = encodeURIComponent(message);
-            document.getElementById('btn-wa').href = `https://wa.me/${CONFIG.whatsappPhone}?text=${encodedMessage}`;
-
-            // Configurar la acción del botón de Instagram
-            const btnIg = document.getElementById('btn-ig');
-            btnIg.onclick = function() {
-                // Copiar el SKU al portapapeles
-                navigator.clipboard.writeText(`Interesado en el producto ${product.sku}`).then(() => {
-                    showToast();
-                    // Redirigir a Instagram después de un momento
-                    setTimeout(() => {
-                        window.open(`https://instagram.com/${CONFIG.instagramUser}`, '_blank');
-                    }, 1200);
-                });
-            };
-
-            modal.classList.add('active');
-        }
-
-        function closeModal(event) {
-            // Cierra el modal si se hace clic fuera del contenido principal
-            if(event.target === modal) {
-                clearHash();
-            }
-        }
-
-        function clearHash() {
-            window.location.hash = '';
-        }
-
-        function showToast() {
-            const toast = document.getElementById('toast-alert');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2500);
-        }
-
-        // Escuchar cambios en la URL
-        window.addEventListener('hashchange', checkHash);
-        window.addEventListener('load', checkHash);
     </script>
 </body>
 </html>
