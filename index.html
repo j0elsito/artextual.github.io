@@ -245,29 +245,29 @@
         </div>
     </div>
 
-    <script>
+        <script>
         let peer = null;
         let conn = null;
-        const CHUNK_SIZE = 16384; // 16KB por paquete para evitar saturar la memoria
+        
+        // Configuraciones críticas para evitar corrupción
+        const CHUNK_SIZE = 65536; // 64KB por paquete (óptimo para WebRTC)
+        let fileReader = new FileReader();
+        let currentOffset = 0;
+        let currentFile = null;
 
-        // 1. INICIALIZAR PEERJS (Conexión automática con el servidor de señales)
-        // Generamos un ID corto aleatorio parecido a los códigos de amigos
+        // Generamos un ID corto aleatorio
         const randomId = 'CRAFT-' + Math.floor(1000 + Math.random() * 9000);
         peer = new Peer(randomId);
 
-        // Mostrar tu ID en pantalla cuando el servidor responda
         peer.on('open', (id) => {
             document.getElementById('my-peer-id').innerText = id;
-            console.log('Tu ID de PeerJS es: ' + id);
         });
 
-        // 2. ESCUCHAR CONEXIONES ENTRANTES (Si el otro dispositivo introduce tu ID)
         peer.on('connection', (connection) => {
             conn = connection;
             configurarEventosConexion();
         });
 
-        // 3. FUNCIÓN PARA LLAMAR A OTRO DISPOSITIVO (Si tú introduces su ID)
         function conectarConAmigo() {
             const targetId = document.getElementById('peer-id-input').value.trim();
             if (!targetId) return alert('¡Introduce un ID válido!');
@@ -277,10 +277,11 @@
             configurarEventosConexion();
         }
 
-        // 4. LOGÍSTICA DE LA CONEXIÓN Y LOGS EN PANTALLA
         function configurarEventosConexion() {
+            let receivedChunks = [];
+            let fileMeta = null;
+
             conn.on('open', () => {
-                // Actualizar Interfaz estilo Minecraft
                 document.getElementById('no-friends-msg').style.display = 'none';
                 
                 const container = document.getElementById('friends-container');
@@ -296,30 +297,37 @@
 
                 document.getElementById('transfer-zone').style.display = 'block';
                 document.getElementById('connected-title').innerText = "Conectado con: " + conn.peer;
-                document.getElementById('status-text').innerText = "Vínculo directo establecido. Elige un archivo.";
+                document.getElementById('status-text').innerText = "Vínculo seguro. Elige un archivo.";
                 document.getElementById('status-text').style.color = "#55ff55";
             });
 
-            // ESCUCHAR CUANDO TE MANDAN UN ARCHIVO
-            let receivedChunks = [];
-            let fileMeta = null;
-
+            // RECEPTOR: Escuchar mensajes y datos
             conn.on('data', (data) => {
-                // Comprobar si son metadatos del archivo (Nombre y Tamaño)
+                
+                // 1. Recibir Metadatos
                 if (data.type === 'meta') {
                     receivedChunks = [];
                     fileMeta = data;
                     document.getElementById('status-text').innerText = `Recibiendo: ${data.name}...`;
                     document.getElementById('status-text').style.color = "#ffaa00";
+                    
+                    // Avisar que estamos listos para el primer fragmento
+                    conn.send({ type: 'next' });
                     return;
                 }
 
-                // Comprobar si es el final del archivo
+                // 2. Control de flujo: El emisor pide confirmación o avanza
+                if (data.type === 'next') {
+                    enviarSiguienteFragmento();
+                    return;
+                }
+
+                // 3. Recibir fin de archivo
                 if (data.type === 'eof') {
-                    const blob = new Blob(receivedChunks);
+                    // Unimos los pedazos garantizando que mantengan el tipo de archivo original (MIME type)
+                    const blob = new Blob(receivedChunks, { type: fileMeta.mime || 'application/octet-stream' });
                     const url = URL.createObjectURL(blob);
                     
-                    // Crear un enlace de descarga automática estilo Minecraft
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = fileMeta.name;
@@ -327,14 +335,18 @@
                     a.click();
                     document.body.removeChild(a);
 
-                    document.getElementById('status-text').innerText = `¡${fileMeta.name} guardado con éxito!`;
+                    document.getElementById('status-text').innerText = `¡${fileMeta.name} guardado al 100%!`;
                     document.getElementById('status-text').style.color = "#55ff55";
                     receivedChunks = [];
                     return;
                 }
 
-                // Si son fragmentos de datos puros, acumularlos
-                receivedChunks.push(data);
+                // 4. Si es un fragmento de datos (aseguramos que sea un ArrayBuffer/Blob)
+                if (data instanceof ArrayBuffer || data.buffer instanceof ArrayBuffer) {
+                    receivedChunks.push(data);
+                    // IMPORTANTE: Le decimos al emisor que ya procesamos este pedazo y envíe el que sigue
+                    conn.send({ type: 'next' });
+                }
             });
 
             conn.on('close', () => {
@@ -343,46 +355,48 @@
             });
         }
 
-        // 5. ENVIAR EL ARCHIVO EN PEDAZOS (CHUNKS)
+        // EMISOR: Lógica de envío controlado paso a paso
         document.getElementById('file-input').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file || !conn) return;
+            currentFile = e.target.files[0];
+            if (!currentFile || !conn) return;
 
+            currentOffset = 0;
             const status = document.getElementById('status-text');
-            status.innerText = `Preparando "${file.name}"...`;
+            status.innerText = `Enlazando "${currentFile.name}"...`;
             status.style.color = "#ffaa00";
 
-            // Enviar Metadatos primero
-            conn.send({ type: 'meta', name: file.name, size: file.size });
-
-            const reader = new FileReader();
-            let offset = 0;
-
-            reader.onload = function(event) {
-                // Enviar fragmento binario
-                conn.send(event.target.result);
-                offset += event.target.result.byteLength;
-
-                // Si falta archivo por leer, continuar
-                if (offset < file.size) {
-                    status.innerText = `Enviando: ${Math.floor((offset / file.size) * 100)}%`;
-                    readNextChunk();
-                } else {
-                    // Fin del archivo
-                    conn.send({ type: 'eof' });
-                    status.innerText = `¡${file.name} enviado correctamente!`;
-                    status.style.color = "#55ff55";
-                }
-            };
-
-            function readNextChunk() {
-                const slice = file.slice(offset, offset + CHUNK_SIZE);
-                reader.readAsArrayBuffer(slice);
-            }
-
-            // Iniciar lectura
-            readNextChunk();
+            // Enviamos metadatos incluyendo el tipo de archivo (ej. video/mp4, image/jpeg)
+            conn.send({ 
+                type: 'meta', 
+                name: currentFile.name, 
+                size: currentFile.size,
+                mime: currentFile.type 
+            });
         });
+
+        function enviarSiguienteFragmento() {
+            const status = document.getElementById('status-text');
+            
+            if (currentOffset < currentFile.size) {
+                const slice = currentFile.slice(currentOffset, currentOffset + CHUNK_SIZE);
+                
+                fileReader.onload = function(event) {
+                    // Enviamos los datos en formato ArrayBuffer puro
+                    conn.send(event.target.result);
+                    currentOffset += event.target.result.byteLength;
+                    
+                    status.innerText = `Enviando: ${Math.floor((currentOffset / currentFile.size) * 100)}%`;
+                };
+                
+                fileReader.readAsArrayBuffer(slice);
+            } else {
+                // Ya no hay más que leer, avisamos el cierre del archivo
+                conn.send({ type: 'eof' });
+                status.innerText = `¡${currentFile.name} enviado sin pérdidas!`;
+                status.style.color = "#55ff55";
+            }
+        }
     </script>
+
 </body>
 </html>
