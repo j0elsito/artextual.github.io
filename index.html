@@ -9,10 +9,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VideoEditor">
     <link rel="apple-touch-icon" href="icono-ios.png">
-
     <link rel="manifest" href="manifest.json">
 
     <style>
+        /* ==========================================
+           1. ESTILOS INTERFAZ PRO (EDICIÓN MULTICLIP)
+           ========================================== */
         html, body {
             position: fixed;
             overflow: hidden;
@@ -21,7 +23,7 @@
             margin: 0;
             padding: 0;
             background-color: #0c0c0e;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: #ffffff;
             overscroll-behavior: none;
         }
@@ -34,6 +36,431 @@
         }
 
         .app-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .header {
+            background-color: #16161a;
+            padding-top: env(safe-area-inset-top, 20px);
+            padding-bottom: 10px;
+            text-align: center;
+            border-bottom: 1px solid #232329;
+        }
+
+        .header h2 { margin: 0; font-size: 14px; color: #a1a1aa; }
+
+        /* Monitor de Previsualización */
+        .preview-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            background-color: #000000;
+        }
+
+        #video-canvas {
+            max-width: 100%;
+            max-height: 80%;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            background-color: #1a1a1f;
+        }
+
+        /* Área de Trabajo Inferior (Controles fijados para pulgares) */
+        .workspace {
+            background-color: #16161a;
+            border-top: 1px solid #232329;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Barra de herramientas de Importación y Globales */
+        .top-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid #232329;
+        }
+
+        .btn-add {
+            background-color: #34c759;
+            color: white; border: none; padding: 6px 14px;
+            border-radius: 15px; font-size: 12px; font-weight: 600;
+        }
+        #file-input { display: none; }
+
+        .btn-play {
+            background-color: #007aff;
+            color: white; border: none; padding: 6px 16px;
+            border-radius: 15px; font-size: 12px; font-weight: 600;
+        }
+        .btn-play.playing { background-color: #ff3b30; }
+
+        /* NUEVA: Línea de tiempo real con bloques de clips scrollables horizontalmente */
+        .timeline-track-container {
+            padding: 15px 10px;
+            background-color: #1c1c22;
+            overflow-x: auto;
+            white-space: nowrap;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            min-height: 70px;
+        }
+
+        /* Cada bloque de video/foto en la línea de tiempo */
+        .timeline-clip {
+            display: inline-block;
+            height: 44px;
+            background: linear-gradient(145deg, #3a3a4c, #2e2e3d);
+            border: 1px solid #4a4a5a;
+            border-radius: 6px;
+            padding: 0 10px;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 500;
+            line-height: 42px;
+            position: relative;
+            min-width: 60px;
+            transition: all 0.2s;
+        }
+
+        /* Estado del clip cuando el usuario lo selecciona */
+        .timeline-clip.selected {
+            border: 2px solid #007aff;
+            background: linear-gradient(145deg, #007aff, #0051a8);
+            box-shadow: 0 0 10px rgba(0,122,255,0.5);
+        }
+
+        /* Panel de edición del clip seleccionado (Ajustar duración y Borrar) */
+        .clip-inspector {
+            background-color: #111115;
+            padding: 10px 15px;
+            display: none; /* Se activa dinámicamente */
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #232329;
+        }
+
+        .inspector-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .inspector-controls input[type="range"] {
+            width: 100px;
+        }
+
+        .btn-danger {
+            background-color: #ff3b30;
+            color: white; border: none; padding: 6px 14px;
+            border-radius: 12px; font-size: 11px; font-weight: bold;
+        }
+
+        /* Marcador de tiempo general */
+        .time-display {
+            padding: 6px 15px;
+            font-size: 11px;
+            color: #8e8e93;
+            font-family: monospace;
+            background-color: #16161a;
+            text-align: center;
+            padding-bottom: calc(env(safe-area-inset-bottom, 10px) + 5px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="header">
+            <h2>TIMELINE VIDEO EDITOR</h2>
+        </header>
+
+        <div class="preview-area">
+            <canvas id="video-canvas"></canvas>
+        </div>
+
+        <div class="workspace">
+            
+            <div class="top-toolbar">
+                <label for="file-input" class="btn-add">+ Añadir Media</label>
+                <input type="file" id="file-input" accept="video/*, image/*" multiple>
+                
+                <button class="btn-play" id="global-play">▶ Play</button>
+            </div>
+
+            <div class="timeline-track-container" id="timeline-track">
+                </div>
+
+            <div class="clip-inspector" id="inspector-panel">
+                <div class="inspector-controls">
+                    <span id="inspector-clip-name">Clip</span>
+                    <label>Duración:</label>
+                    <input type="range" id="clip-duration-slider" min="1" max="30" step="0.5">
+                    <span id="clip-duration-text">5s</span>
+                </div>
+                <button class="btn-danger" id="btn-delete-clip">🗑 Borrar</button>
+            </div>
+
+            <div class="time-display">
+                <span id="global-time">00:00.0</span> / Total: <span id="total-time">00:00.0</span>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================
+           2. MOTOR LÓGICO DEL EDITOR EN JAVASCRIPT
+           ========================================== */
+        const canvas = document.getElementById('video-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const fileInput = document.getElementById('file-input');
+        const timelineTrack = document.getElementById('timeline-track');
+        const btnPlay = document.getElementById('global-play');
+        const globalTimeLabel = document.getElementById('global-time');
+        const totalTimeLabel = document.getElementById('total-time');
+        
+        // Elementos del Inspector de Clip
+        const inspectorPanel = document.getElementById('inspector-panel');
+        const inspectorName = document.getElementById('inspector-clip-name');
+        const durationSlider = document.getElementById('clip-duration-slider');
+        const durationText = document.getElementById('clip-duration-text');
+        const btnDeleteClip = document.getElementById('btn-delete-clip');
+
+        // Estado del proyecto
+        let playlist = []; // Array que almacena todos los clips secuencialmente
+        let selectedIndex = null; // Índice del clip seleccionado actualmente
+        let globalTime = 0; // Tiempo actual de reproducción en segundos
+        let totalDuration = 0; // Duración total combinada de la línea de tiempo
+        let isPlaying = false;
+        let lastFrameTime = 0;
+
+        // Configuración inicial del Canvas
+        canvas.width = 1280;
+        canvas.height = 720;
+        clearCanvas();
+
+        // --- 1. CARGAR ARCHIVOS (VIDEO O FOTO) ---
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            
+            files.forEach(file => {
+                const isVideo = file.type.startsWith('video/');
+                const isImage = file.type.startsWith('image/');
+                
+                if (!isVideo && !isImage) return;
+
+                const element = isVideo ? document.createElement('video') : document.createElement('img');
+                element.src = URL.createObjectURL(file);
+
+                const newClip = {
+                    id: Date.now() + Math.random(),
+                    name: file.name.substring(0, 10) + "...",
+                    type: isVideo ? 'video' : 'image',
+                    element: element,
+                    duration: 5.0, // Duración base por defecto (modificable)
+                    loaded: false
+                };
+
+                if (isVideo) {
+                    element.muted = true;
+                    element.playsInline = true;
+                    element.webkitPlaysInline = true;
+                    element.addEventListener('loadedmetadata', () => {
+                        newClip.duration = element.duration;
+                        newClip.loaded = true;
+                        recalculateTimeline();
+                    });
+                } else {
+                    element.onload = () => {
+                        newClip.loaded = true;
+                        recalculateTimeline();
+                    };
+                }
+
+                playlist.push(newClip);
+            });
+
+            // Limpiar input para permitir subir el mismo archivo consecutivamente
+            fileInput.value = "";
+            recalculateTimeline();
+        });
+
+        // --- 2. GESTIÓN Y RENDIMIENTO DE LA LÍNEA DE TIEMPO ---
+        function recalculateTimeline() {
+            totalDuration = 0;
+            timelineTrack.innerHTML = "";
+
+            playlist.forEach((clip, index) => {
+                totalDuration += parseFloat(clip.duration);
+
+                // Crear el bloque visual del clip en la barra horizontal
+                const clipBlock = document.createElement('div');
+                clipBlock.className = `timeline-clip ${index === selectedIndex ? 'selected' : ''}`;
+                // El ancho del bloque responde proporcionalmente a su duración en segundos
+                clipBlock.style.width = `${Math.max(60, clip.duration * 12)}px`;
+                clipBlock.textContent = `${clip.name} (${clip.duration.toFixed(1)}s)`;
+
+                // Evento Tap/Click para seleccionar el clip
+                clipBlock.addEventListener('click', () => selectClip(index));
+
+                timelineTrack.appendChild(clipBlock);
+            });
+
+            totalTimeLabel.textContent = formatTime(totalDuration);
+            updateInspector();
+            renderCurrentFrame();
+        }
+
+        // --- 3. SELECCIÓN, RECORTES Y EDICIÓN ---
+        function selectClip(index) {
+            selectedIndex = (selectedIndex === index) ? null : index; // Toggle selección
+            recalculateTimeline();
+        }
+
+        function updateInspector() {
+            if (selectedIndex !== null && playlist[selectedIndex]) {
+                const clip = playlist[selectedIndex];
+                inspectorPanel.style.display = 'flex';
+                inspectorName.textContent = clip.type === 'video' ? '📹 Video' : '🖼 Foto';
+                
+                // Si es video, limitamos su duración máxima a la real del archivo original
+                if (clip.type === 'video' && clip.element.duration) {
+                    durationSlider.max = clip.element.duration;
+                } else {
+                    durationSlider.max = 30; // Fotos máximo 30 segundos
+                }
+                
+                durationSlider.value = clip.duration;
+                durationText.textContent = `${parseFloat(clip.duration).toFixed(1)}s`;
+            } else {
+                inspectorPanel.style.display = 'none';
+            }
+        }
+
+        // Modificar duración arrastrando el control deslizante (Slider)
+        durationSlider.addEventListener('input', (e) => {
+            if (selectedIndex !== null && playlist[selectedIndex]) {
+                playlist[selectedIndex].duration = parseFloat(e.target.value);
+                durationText.textContent = `${playlist[selectedIndex].duration.toFixed(1)}s`;
+                recalculateTimeline();
+            }
+        });
+
+        // Eliminar clip seleccionado de la lista
+        btnDeleteClip.addEventListener('click', () => {
+            if (selectedIndex !== null) {
+                playlist.splice(selectedIndex, 1);
+                selectedIndex = null;
+                if (globalTime > totalDuration) globalTime = 0;
+                recalculateTimeline();
+            }
+        });
+
+        // --- 4. SISTEMA DE REPRODUCCIÓN GLOBAL (PLAYBACK EN LOOP) ---
+        btnPlay.addEventListener('click', () => {
+            if (playlist.length === 0) return;
+            
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                btnPlay.textContent = "⏸ Pause";
+                btnPlay.classList.add('playing');
+                lastFrameTime = performance.now();
+                requestAnimationFrame(playbackLoop);
+            } else {
+                btnPlay.textContent = "▶ Play";
+                btnPlay.classList.remove('playing');
+            }
+        });
+
+        function playbackLoop(now) {
+            if (!isPlaying) return;
+
+            let deltaTime = (now - lastFrameTime) / 1000;
+            lastFrameTime = now;
+
+            globalTime += deltaTime;
+
+            // Si llegamos al final de todos los clips unidos, volvemos al inicio (Loop)
+            if (globalTime >= totalDuration) {
+                globalTime = 0;
+            }
+
+            globalTimeLabel.textContent = formatTime(globalTime);
+            renderCurrentFrame();
+
+            requestAnimationFrame(playbackLoop);
+        }
+
+        // --- 5. RENDERIZADO EN PANTALLA SEGÚN TIEMPO GLOBAL ---
+        function renderCurrentFrame() {
+            if (playlist.length === 0) {
+                clearCanvas();
+                return;
+            }
+
+            let accumulatedTime = 0;
+            let targetClip = null;
+            let internalTime = 0;
+
+            // Buscar qué clip le corresponde al segundo global actual
+            for (let i = 0; i < playlist.length; i++) {
+                const clip = playlist[i];
+                if (globalTime >= accumulatedTime && globalTime <= (accumulatedTime + clip.duration)) {
+                    targetClip = clip;
+                    internalTime = globalTime - accumulatedTime; // Tiempo exacto dentro de ese clip
+                    break;
+                }
+                accumulatedTime += clip.duration;
+            }
+
+            // Si por desincronización no encuentra, pintar el último clip
+            if (!targetClip) {
+                targetClip = playlist[playlist.length - 1];
+                internalTime = targetClip.duration;
+            }
+
+            // Dibujar el fotograma correspondiente en el lienzo
+            if (targetClip && targetClip.loaded) {
+                if (targetClip.type === 'video') {
+                    // Forzar al elemento de video oculto a posicionarse en el segundo exacto
+                    targetClip.element.currentTime = internalTime;
+                    ctx.drawImage(targetClip.element, 0, 0, canvas.width, canvas.height);
+                } else if (targetClip.type === 'image') {
+                    // Las imágenes son estáticas, se dibujan completas directas
+                    ctx.drawImage(targetClip.element, 0, 0, canvas.width, canvas.height);
+                }
+            }
+        }
+
+        function clearCanvas() {
+            ctx.fillStyle = '#111115';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#444452';
+            ctx.font = '30px -apple-system';
+            ctx.textAlign = 'center';
+            ctx.fillText('Línea de tiempo vacía', canvas.width / 2, canvas.height / 2);
+        }
+
+        function formatTime(seconds) {
+            let min = Math.floor(seconds / 60);
+            let sec = Math.floor(seconds % 60);
+            let ms = Math.floor((seconds % 1) * 10);
+            return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}.${ms}`;
+        }
+    </script>
+</body>
+</html>
             width: 100%;
             height: 100%;
             display: flex;
