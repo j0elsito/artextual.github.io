@@ -2,38 +2,309 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TecnoTrade | Catálogo Premium</title>
-    <style>
-        :root {
-            --bg-color: #000000;
-            --card-bg: #121212;
-            --text-color: #ffffff;
-            --accent-color: #8E8E93;
-            --border-color: #2C2C2E;
-            --whatsapp-color: #34C759;
-            --instagram-color: #E1306C;
-        }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>TechExchange Video Editor</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VideoEditor">
+    <link rel="apple-touch-icon" href="icono-ios.png">
 
-        body {
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        /* ==========================================================================
+           1. ESTILOS CSS ANTI-NAVEGADOR (OPTIMIZACIÓN PARA PANTALLA COMPLETA)
+           ========================================================================== */
+        html, body {
+            position: fixed;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
             margin: 0;
             padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            -webkit-font-smoothing: antialiased;
+            background-color: #0c0c0e;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #ffffff;
+            overscroll-behavior: none; /* Elimina el efecto elástico de rebote de Safari */
         }
 
-        header {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 40px 20px 20px 20px;
+        /* Bloqueo global de gestos e interacciones clásicas de páginas web */
+        * {
+            -webkit-user-select: none; /* Impide que el usuario seleccione texto por error */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Quita el recuadro azul molesto al pulsar botones */
+            box-sizing: border-box;
+        }
+
+        /* Contenedor maestro de la App */
+        .app-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Cabecera optimizada para el Notch o la Dynamic Island */
+        .header {
+            background-color: #16161a;
+            padding-top: env(safe-area-inset-top, 20px);
+            padding-bottom: 12px;
             text-align: center;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid #232329;
         }
 
-        .logo {
-            font-size: 24px;
+        .header h2 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #e5e5ea;
+        }
+
+        /* Área de visualización del Video */
+        .preview-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            background-color: #000000;
+        }
+
+        #video-canvas {
+            max-width: 100%;
+            max-height: 85%;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+            background-color: #111115;
+        }
+
+        #source-video {
+            display: none; /* Ocultamos el elemento nativo; procesamos sus fotogramas por código */
+        }
+
+        /* Barra de Herramientas de Edición y Filtros */
+        .toolbar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 16px 12px;
+            background-color: #16161a;
+            border-top: 1px solid #232329;
+        }
+
+        .btn {
+            background-color: #2c2c35;
+            color: #ffffff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        /* Feedback visual nativo al mantener presionado en el iPhone */
+        .btn:active {
+            background-color: #3a3a44;
+            transform: scale(0.96);
+        }
+
+        #btn-play {
+            background-color: #007aff; /* Azul característico de iOS */
+            min-width: 90px;
+        }
+        
+        #btn-play.playing {
+            background-color: #ff3b30; /* Rojo si está en reproducción */
+        }
+
+        /* Línea de Tiempo Inferior compatible con la barra de inicio de iOS */
+        .timeline-container {
+            background-color: #16161a;
+            padding: 12px 16px;
+            padding-bottom: calc(env(safe-area-inset-bottom, 12px) + 8px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .timeline-container span {
+            font-size: 12px;
+            color: #8e8e93;
+            font-family: -apple-system-font, monospace;
+        }
+
+        #timeline-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: #3a3a3c;
+            outline: none;
+        }
+
+        #timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #007aff;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header class="header">
+            <h2>EDITOR DE VIDEO PRO</h2>
+        </header>
+
+        <div class="preview-area">
+            <video id="source-video" playsinline webkit-playsinline loop muted src="https://assets.mixkit.co/videos/preview/mixkit-neon-light-from-a-tunnel-seamless-loop-41614-large.mp4"></video>
+            <canvas id="video-canvas"></canvas>
+        </div>
+
+        <div class="toolbar">
+            <button class="btn" id="btn-play">▶ Play</button>
+            <button class="btn btn-filter" data-filter="normal">Original</button>
+            <button class="btn btn-filter" data-filter="bw">B&N</button>
+            <button class="btn btn-filter" data-filter="invert">Invertido</button>
+        </div>
+
+        <div class="timeline-container">
+            <span id="current-time">00:00</span>
+            <input type="range" id="timeline-slider" min="0" max="100" value="0">
+            <span id="total-time">00:00</span>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           2. MOTOR LÓGICO EN JAVASCRIPT (RENDERIZADO Y PROCESAMIENTO DE FOTOGRAMAS)
+           ========================================================================== */
+        const video = document.getElementById('source-video');
+        const canvas = document.getElementById('video-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const btnPlay = document.getElementById('btn-play');
+        const slider = document.getElementById('timeline-slider');
+        const currentTimeLabel = document.getElementById('current-time');
+        const totalTimeLabel = document.getElementById('total-time');
+        const filterButtons = document.querySelectorAll('.btn-filter');
+
+        let currentFilter = 'normal';
+
+        // Sincroniza las dimensiones cuando el video está listo en memoria
+        video.addEventListener('loadedmetadata', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            totalTimeLabel.textContent = formatTime(video.duration);
+            slider.max = Math.floor(video.duration);
+            drawFrame(); // Dibuja la primera imagen inicial
+        });
+
+        // Alternar reproducción
+        btnPlay.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+                btnPlay.textContent = "⏸ Pause";
+                btnPlay.classList.add('playing');
+                renderLoop();
+            } else {
+                video.pause();
+                btnPlay.textContent = "▶ Play";
+                btnPlay.classList.remove('playing');
+            }
+        });
+
+        // Bucle de renderizado continuo sincronizado a los Hz de la pantalla del iPhone
+        function renderLoop() {
+            if (video.paused || video.ended) return;
+            
+            drawFrame();
+            updateTimeline();
+            
+            requestAnimationFrame(renderLoop);
+        }
+
+        // Extractor de fotogramas y manipulador de píxeles
+        function drawFrame() {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            if (currentFilter !== 'normal') {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Recorrido de la matriz RGBA píxel por píxel
+                for (let i = 0; i < data.length; i += 4) {
+                    let r = data[i];
+                    let g = data[i+1];
+                    let b = data[i+2];
+                    
+                    if (currentFilter === 'bw') {
+                        let grey = (r + g + b) / 3;
+                        data[i] = grey;     // Rojo
+                        data[i+1] = grey;   // Verde
+                        data[i+2] = grey;   // Azul
+                    } else if (currentFilter === 'invert') {
+                        data[i] = 255 - r;
+                        data[i+1] = 255 - g;
+                        data[i+2] = 255 - b;
+                    }
+                }
+                ctx.putImageData(imageData, 0, 0);
+            }
+        }
+
+        // Cambiar entre los filtros de la barra
+        filterButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                currentFilter = e.target.getAttribute('data-filter');
+                if (video.paused) drawFrame(); // Fuerza actualización visual si el video está en pausa
+            });
+        });
+
+        // Sincronizar el control deslizante con la reproducción activa
+        function updateTimeline() {
+            slider.value = Math.floor(video.currentTime);
+            currentTimeLabel.textContent = formatTime(video.currentTime);
+        }
+
+        // Permite mover manualmente la línea de tiempo (Scrubbing)
+        slider.addEventListener('input', () => {
+            video.currentTime = slider.value;
+            currentTimeLabel.textContent = formatTime(video.currentTime);
+            if (video.paused) drawFrame();
+        });
+
+        // Convierte segundos planos a formato mm:ss
+        function formatTime(seconds) {
+            let min = Math.floor(seconds / 60);
+            let sec = Math.floor(seconds % 60);
+            return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        /* ==========================================================================
+           3. REGISTRO DEL SERVICE WORKER (PARA CARGA INSTANTÁNEA / OFFLINE)
+           ========================================================================== */
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('PWA: Service Worker listo.'))
+                    .catch(err => console.log('PWA: Error al registrar.', err));
+            });
+        }
+    </script>
+</body>
+</html>
             font-weight: 700;
             letter-spacing: -0.5px;
             margin: 0 0 8px 0;
