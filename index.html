@@ -3,260 +3,329 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CraftShare - Transferencia Directa</title>
+    <title>DropShare - Transferencia Directa y Segura</title>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <style>
+        /* ESTILOS MODERNOS Y MINIMALISTAS (MODO OSCURO) */
+        :root {
+            --bg-principal: #0b0f19;
+            --bg-tarjeta: #151d30;
+            --azul-electrico: #0070f3;
+            --azul-hover: #0051b3;
+            --verde-exito: #00e676;
+            --naranja-alerta: #ff9100;
+            --texto-blanco: #ffffff;
+            --texto-secundario: #94a3b8;
+            --borde: #233554;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Press Start 2P', monospace;
-            image-rendering: pixelated;
+            font-family: 'Inter', sans-serif;
         }
 
         body {
-            background-color: #2c2c2c;
-            background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
-                              url('https://www.transparenttextures.com/patterns/dark-matter.png');
-            color: #ffffff;
+            background-color: var(--bg-principal);
+            color: var(--texto-blanco);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 20px;
         }
 
-        .menu-container {
+        .app-container {
             width: 100%;
-            max-width: 600px;
-            background-color: rgba(0, 0, 0, 0.4);
-            border: 4px solid #4a4a4a;
-            outline: 4px solid #000000;
-            padding: 20px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            max-width: 480px;
+            background-color: var(--bg-tarjeta);
+            border: 1px solid var(--borde);
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
 
-        .tabs {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            gap: 8px;
-        }
-
-        .tab {
-            flex: 1;
-            background: #4a4a4a;
-            border: 3px solid #7a7a7a;
-            border-bottom: none;
-            color: #aaaaaa;
-            padding: 12px 5px;
+        /* CABECERA */
+        .header {
             text-align: center;
-            font-size: 10px;
-            cursor: not-allowed;
-            text-shadow: 2px 2px #000;
+            margin-bottom: 25px;
         }
 
-        .tab.active {
-            background: #7a7a7a;
-            border: 3px solid #ffffff;
-            border-bottom: none;
-            color: #ffffff;
-            cursor: pointer;
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 6px;
+            background: linear-gradient(45deg, #0070f3, #00dfd8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .section-title {
-            font-size: 11px;
-            color: #e0e0e0;
-            margin-bottom: 12px;
-            text-shadow: 2px 2px #000;
+        .header p {
+            font-size: 14px;
+            color: var(--texto-secundario);
         }
 
-        /* CONFIGURACIÓN DE TU ID */
-        .my-id-box {
-            background: #1a1a1a;
-            border: 3px dashed #7a7a7a;
-            padding: 10px;
-            margin-bottom: 15px;
-            font-size: 9px;
-            color: #ffff55;
-            text-align: center;
-            word-break: break-all;
-        }
-
-        /* CONEXIÓN MANUAL/BUSCADOR */
-        .search-box {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
-        .mc-input {
-            flex: 1;
-            background: #000;
-            border: 3px solid #4a4a4a;
-            color: #fff;
-            padding: 10px;
-            font-size: 10px;
-            outline: none;
-        }
-        .mc-input:focus {
-            border-color: #fff;
-        }
-
-        /* LISTA DE AMIGOS */
-        .friends-list {
-            background: rgba(0, 0, 0, 0.6);
-            border: 4px solid #1a1a1a;
-            min-height: 120px;
-            padding: 10px;
-            margin-bottom: 20px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .friend-item {
-            background: #4a4a4a;
-            border: 3px solid #2a2a2a;
-            border-bottom-color: #111;
-            border-right-color: #111;
-            padding: 12px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-        }
-
-        .friend-item:hover {
-            background: #5a5a5a;
-            border-color: #ffffff;
-        }
-
-        .friend-info h3 {
-            font-size: 11px;
-            color: #55ff55;
-            text-shadow: 2px 2px #000;
-            margin-bottom: 4px;
-        }
-
-        .ping-indicator {
-            width: 16px;
-            height: 16px;
-            background: #55ff55;
-            border: 2px solid #000;
-            box-shadow: inset -2px -2px #00aa00;
-        }
-
-        /* PANEL DE TRANSFERENCIA */
-        .transfer-panel {
-            background: #2a2a2a;
-            border: 4px solid #111;
+        /* SECCIÓN DE IDENTIDAD (TU ID) */
+        .id-section {
+            background: rgba(0, 112, 243, 0.1);
+            border: 1px solid rgba(0, 112, 243, 0.3);
+            border-radius: 16px;
             padding: 15px;
+            margin-bottom: 25px;
             text-align: center;
-            display: none;
         }
 
-        .transfer-panel h4 {
-            font-size: 10px;
-            margin-bottom: 15px;
-            color: #ffff55;
+        .id-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--texto-secundario);
+            margin-bottom: 5px;
+            font-weight: 600;
         }
 
-        /* BOTONES MINECRAFT */
-        .mc-button {
-            background: #7c7c7c;
-            border: 3px solid #ffffff;
-            border-bottom-color: #373737;
-            border-right-color: #373737;
-            color: #e0e0e0;
-            padding: 12px;
-            font-size: 10px;
-            text-align: center;
-            text-shadow: 2px 2px #000;
+        .id-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--texto-blanco);
+            letter-spacing: 2px;
             cursor: pointer;
-            width: 100%;
             display: inline-block;
-            box-sizing: border-box;
+            transition: transform 0.2s;
+        }
+        .id-value:active {
+            transform: scale(0.95);
         }
 
-        .mc-button:hover {
-            background: #8c8c8c;
-            color: #ffffff;
+        /* BUSCADOR / CONEXIÓN */
+        .connect-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
         }
 
-        .mc-button:active {
-            background: #4a4a4a;
-            border: 3px solid #373737;
-            border-top-color: #ffffff;
-            border-left-color: #ffffff;
+        .modern-input {
+            flex: 1;
+            background: #090d16;
+            border: 1px solid var(--borde);
+            border-radius: 14px;
+            color: #fff;
+            padding: 14px 16px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .modern-input:focus {
+            border-color: var(--azul-electrico);
         }
 
-        .btn-small {
-            width: auto;
-            padding: 10px 15px;
+        .modern-button {
+            background: var(--azul-electrico);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            padding: 14px 22px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .modern-button:hover {
+            background: var(--azul-hover);
+        }
+        .modern-button:active {
+            transform: scale(0.98);
+        }
+
+        /* RADAR / ESTADO DE CONEXIÓN */
+        .radar-zone {
+            background: #090d16;
+            border: 1px solid var(--borde);
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Animación sutil de pulso para simular búsqueda */
+        .radar-avatar {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 112, 243, 0.2);
+            border: 2px solid var(--azul-electrico);
+            border-radius: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+            box-shadow: 0 0 0 0 rgba(0, 112, 243, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 112, 243, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 112, 243, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 112, 243, 0); }
+        }
+
+        .radar-status-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .radar-status-sub {
+            font-size: 13px;
+            color: var(--texto-secundario);
+        }
+
+        /* PANEL DE TRANSFERENCIA AUTOMÁTICO */
+        .transfer-panel {
+            display: none; /* Se activa al conectar */
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-label {
+            background: linear-gradient(135deg, #233554 0%, #151d30 100%);
+            border: 2px dashed var(--borde);
+            border-radius: 16px;
+            padding: 30px 20px;
+            display: block;
+            cursor: pointer;
+            text-align: center;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .file-label:hover {
+            border-color: var(--azul-electrico);
+            background: rgba(0, 112, 243, 0.05);
+        }
+
+        .file-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .file-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--texto-blanco);
         }
 
         #file-input {
             display: none;
         }
 
-        .status-msg {
-            font-size: 8px;
-            color: #aaa;
-            margin-top: 10px;
-            text-align: center;
-            line-height: 1.4;
+        .progress-container {
+            margin-top: 15px;
+            text-align: left;
+        }
+
+        .progress-bar-bg {
+            background: #090d16;
+            height: 8px;
+            border-radius: 4px;
+            width: 100%;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            background: var(--azul-electrico);
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        /* ESPACIO PARA BANNER DE ANUNCIOS (PREPARADO PARA ADSTERRA) */
+        .ad-container {
+            margin-top: 25px;
+            width: 100%;
+            min-height: 60px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
     </style>
 </head>
 <body>
 
-    <div class="menu-container">
-        <div class="tabs">
-            <div class="tab">Mundos</div>
-            <div class="tab active">Amigos</div>
-            <div class="tab">Servidores</div>
+    <div class="app-container">
+        <div class="header">
+            <h1>DropShare</h1>
+            <p>Compartir archivos por P2P sin compresión</p>
         </div>
 
-        <div class="section-title">Tu ID de Mundo (Este dispositivo)</div>
-        <div class="my-id-box" id="my-peer-id">Generando tu ID...</div>
-
-        <div class="section-title">Unirse al Mundo de un Amigo</div>
-        <div class="search-box">
-            <input type="text" id="peer-id-input" class="mc-input" placeholder="Introduce el ID de tu amigo...">
-            <button class="mc-button btn-small" onclick="conectarConAmigo()">Conectar</button>
+        <div class="id-section">
+            <div class="id-label">Tu ID de conexión</div>
+            <div class="id-value" id="my-peer-id" onclick="copiarMiID()">Cargando...</div>
         </div>
 
-        <div class="section-title">Conexiones Activas</div>
-        <div class="friends-list" id="friends-container">
-            <div class="status-msg" id="no-friends-msg">No hay amigos enlazados aún.</div>
+        <div class="connect-box">
+            <input type="text" id="peer-id-input" class="modern-input" placeholder="Introduce el ID del destino...">
+            <button class="modern-button" onclick="conectarConAmigo()">Conectar</button>
+        </div>
+
+        <div class="radar-zone" id="radar-container">
+            <div class="radar-avatar" id="radar-icon">📡</div>
+            <div class="radar-status-title" id="radar-title">Esperando Dispositivos</div>
+            <div class="radar-status-sub" id="radar-sub">Introduce un ID arriba para sincronizar el canal.</div>
         </div>
 
         <div class="transfer-panel" id="transfer-zone">
-            <h4 id="connected-title">Conectado con: Ninguno</h4>
-            <label for="file-input" class="mc-button">Seleccionar Archivo</label>
+            <label for="file-input" class="file-label">
+                <div class="file-icon">📁</div>
+                <div class="file-text" id="upload-instruction">Toca aquí para enviar fotos o videos</div>
+            </label>
             <input type="file" id="file-input">
-            <div class="status-msg" id="status-text">Listo para enviar archivos sin compresión.</div>
+            
+            <div class="progress-container">
+                <div class="radar-status-sub" id="status-text">Listo para la transferencia directa.</div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progress-bar"></div>
+                </div>
+            </div>
         </div>
+
+        <div class="ad-container" id="ad-space">
+            Anuncio Patrocinado
+            </div>
     </div>
 
-        <script>
+    <script>
         let peer = null;
         let conn = null;
         
-        // Configuraciones críticas para evitar corrupción
-        const CHUNK_SIZE = 65536; // 64KB por paquete (óptimo para WebRTC)
+        const CHUNK_SIZE = 65536; 
         let fileReader = new FileReader();
         let currentOffset = 0;
         let currentFile = null;
 
-        // Generamos un ID corto aleatorio
-        const randomId = 'CRAFT-' + Math.floor(1000 + Math.random() * 9000);
+        const randomId = 'DROP-' + Math.floor(1000 + Math.random() * 9000);
         peer = new Peer(randomId);
 
         peer.on('open', (id) => {
@@ -272,9 +341,17 @@
             const targetId = document.getElementById('peer-id-input').value.trim();
             if (!targetId) return alert('¡Introduce un ID válido!');
             
-            document.getElementById('no-friends-msg').innerText = "Conectando...";
+            document.getElementById('radar-title').innerText = "Estableciendo puente P2P...";
             conn = peer.connect(targetId);
             configurarEventosConexion();
+        }
+
+        function copiarMiID() {
+            const idText = document.getElementById('my-peer-id').innerText;
+            if(idText && idText !== "Cargando...") {
+                navigator.clipboard.writeText(idText);
+                alert("¡ID copiado al portapapeles!");
+            }
         }
 
         function configurarEventosConexion() {
@@ -282,49 +359,40 @@
             let fileMeta = null;
 
             conn.on('open', () => {
-                document.getElementById('no-friends-msg').style.display = 'none';
-                
-                const container = document.getElementById('friends-container');
-                container.innerHTML = `
-                    <div class="friend-item">
-                        <div class="friend-info">
-                            <h3>${conn.peer}</h3>
-                            <p>¡Mundo sincronizado en directo!</p>
-                        </div>
-                        <div class="ping-indicator"></div>
-                    </div>
-                `;
+                // Actualizamos la zona del radar para avisar el éxito en el enlace
+                const radarIcon = document.getElementById('radar-icon');
+                radarIcon.innerText = "⚡";
+                radarIcon.style.animation = "none";
+                radarIcon.style.background = "rgba(0, 230, 118, 0.1)";
+                radarIcon.style.borderColor = "var(--verde-exito)";
 
+                document.getElementById('radar-title').innerText = "¡Dispositivos Enlazados!";
+                document.getElementById('radar-title').style.color = "var(--verde-exito)";
+                document.getElementById('radar-sub').innerText = "Conectado de forma directa con: " + conn.peer;
+
+                // Desplegamos el panel de control de archivos
                 document.getElementById('transfer-zone').style.display = 'block';
-                document.getElementById('connected-title').innerText = "Conectado con: " + conn.peer;
-                document.getElementById('status-text').innerText = "Vínculo seguro. Elige un archivo.";
-                document.getElementById('status-text').style.color = "#55ff55";
             });
 
-            // RECEPTOR: Escuchar mensajes y datos
             conn.on('data', (data) => {
-                
-                // 1. Recibir Metadatos
+                const statusText = document.getElementById('status-text');
+                const progressBar = document.getElementById('progress-bar');
+
                 if (data.type === 'meta') {
                     receivedChunks = [];
                     fileMeta = data;
-                    document.getElementById('status-text').innerText = `Recibiendo: ${data.name}...`;
-                    document.getElementById('status-text').style.color = "#ffaa00";
-                    
-                    // Avisar que estamos listos para el primer fragmento
+                    statusText.innerText = `Descargando: ${data.name}...`;
+                    statusText.style.color = "var(--naranja-alerta)";
                     conn.send({ type: 'next' });
                     return;
                 }
 
-                // 2. Control de flujo: El emisor pide confirmación o avanza
                 if (data.type === 'next') {
                     enviarSiguienteFragmento();
                     return;
                 }
 
-                // 3. Recibir fin de archivo
                 if (data.type === 'eof') {
-                    // Unimos los pedazos garantizando que mantengan el tipo de archivo original (MIME type)
                     const blob = new Blob(receivedChunks, { type: fileMeta.mime || 'application/octet-stream' });
                     const url = URL.createObjectURL(blob);
                     
@@ -335,37 +403,40 @@
                     a.click();
                     document.body.removeChild(a);
 
-                    document.getElementById('status-text').innerText = `¡${fileMeta.name} guardado al 100%!`;
-                    document.getElementById('status-text').style.color = "#55ff55";
+                    statusText.innerText = `¡${fileMeta.name} recibido al 100%!`;
+                    statusText.style.color = "var(--verde-exito)";
+                    progressBar.style.width = "100%";
+                    progressBar.style.backgroundColor = "var(--verde-exito)";
                     receivedChunks = [];
                     return;
                 }
 
-                // 4. Si es un fragmento de datos (aseguramos que sea un ArrayBuffer/Blob)
                 if (data instanceof ArrayBuffer || data.buffer instanceof ArrayBuffer) {
                     receivedChunks.push(data);
-                    // IMPORTANTE: Le decimos al emisor que ya procesamos este pedazo y envíe el que sigue
+                    
+                    // Calcular porcentaje de recepción simulado básico para el receptor
+                    progressBar.style.width = "50%"; // Indicador de actividad
+                    progressBar.style.backgroundColor = "var(--naranja-alerta)";
+                    
                     conn.send({ type: 'next' });
                 }
             });
 
             conn.on('close', () => {
-                alert('La conexión se ha perdido.');
+                alert('La conexión directa se ha cerrado.');
                 window.location.reload();
             });
         }
 
-        // EMISOR: Lógica de envío controlado paso a paso
         document.getElementById('file-input').addEventListener('change', function(e) {
             currentFile = e.target.files[0];
             if (!currentFile || !conn) return;
 
             currentOffset = 0;
-            const status = document.getElementById('status-text');
-            status.innerText = `Enlazando "${currentFile.name}"...`;
-            status.style.color = "#ffaa00";
+            const statusText = document.getElementById('status-text');
+            statusText.innerText = `Analizando archivo...`;
+            statusText.style.color = "var(--naranja-alerta)";
 
-            // Enviamos metadatos incluyendo el tipo de archivo (ej. video/mp4, image/jpeg)
             conn.send({ 
                 type: 'meta', 
                 name: currentFile.name, 
@@ -375,28 +446,32 @@
         });
 
         function enviarSiguienteFragmento() {
-            const status = document.getElementById('status-text');
+            const statusText = document.getElementById('status-text');
+            const progressBar = document.getElementById('progress-bar');
             
             if (currentOffset < currentFile.size) {
                 const slice = currentFile.slice(currentOffset, currentOffset + CHUNK_SIZE);
                 
                 fileReader.onload = function(event) {
-                    // Enviamos los datos en formato ArrayBuffer puro
                     conn.send(event.target.result);
                     currentOffset += event.target.result.byteLength;
                     
-                    status.innerText = `Enviando: ${Math.floor((currentOffset / currentFile.size) * 100)}%`;
+                    const porcentaje = Math.floor((currentOffset / currentFile.size) * 100);
+                    statusText.innerText = `Enviando archivo: ${porcentaje}%`;
+                    statusText.style.color = "var(--azul-electrico)";
+                    progressBar.style.width = `${porcentaje}%`;
+                    progressBar.style.backgroundColor = "var(--azul-electrico)";
                 };
                 
                 fileReader.readAsArrayBuffer(slice);
             } else {
-                // Ya no hay más que leer, avisamos el cierre del archivo
                 conn.send({ type: 'eof' });
-                status.innerText = `¡${currentFile.name} enviado sin pérdidas!`;
-                status.style.color = "#55ff55";
+                statusText.innerText = `¡${currentFile.name} enviado con éxito!`;
+                statusText.style.color = "var(--verde-exito)";
+                progressBar.style.width = "100%";
+                progressBar.style.backgroundColor = "var(--verde-exito)";
             }
         }
     </script>
-
 </body>
 </html>
